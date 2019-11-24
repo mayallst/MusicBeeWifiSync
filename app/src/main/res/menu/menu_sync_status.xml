@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools" tools:context=".SyncResultsStatusActivity">
+    <group android:id="@+id/wifiSettingsGroup">
+        <item android:id="@+id/wifiSyncSettingsMenuItem" app:showAsAction="never" android:title="@string/menuSyncSettings" />
+    </group>
+    <group android:id="@+id/wifiErrorLogGroup">
+        <item android:id="@+id/wifiSyncLogMenuItem" app:showAsAction="never" android:title="@string/menuWifiSyncLog" />
+    </group>
+</menu>

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".SyncResultsPreviewActivity">
+
+    <ProgressBar
+        android:id="@+id/previewWaitIndicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minHeight="60dp"
+        android:minWidth="60dp"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.45"
+    />
+
+    <TextView
+        android:id="@+id/previewStatusMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="15dp"
+        android:textSize="16sp"
+        android:visibility="invisible"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintVertical_bias="0.2"
+    />
+
+    <ListView
+        android:id="@+id/previewResults"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="5dp"
+        android:scrollbars="vertical"
+        android:visibility="invisible"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/previewErrorMessage"
+    />
+
+    <TextView
+        android:id="@+id/previewErrorMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="3dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:gravity="center_vertical"
+        android:textSize="15sp"
+        android:textStyle="bold|italic"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toTopOf="@+id/syncExcludeErrors"
+        />
+
+    <CheckBox
+        android:id="@+id/syncExcludeErrors"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="15dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:textSize="15sp"
+        android:text="@string/syncPreviewIgnoreErrors"
+        android:checked="true"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toTopOf="@+id/proceedSyncButton"
+        />
+
+    <LinearLayout
+        android:id="@+id/proceedSyncButton"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:background="@color/colorButtonBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:onClick="onProceedSyncButton_Click"
+        android:orientation="horizontal"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        style="@style/Widget.AppCompat.Button.Borderless.Colored" >
+
+        <ImageView
+            android:id="@+id/proceedSyncButtonImage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="8dp"
+            android:tint="@color/colorButtonTextEnabled"
+            android:src="@android:drawable/ic_popup_sync"
+            tools:ignore="ContentDescription"
+        />
+
+        <TextView
+            android:id="@+id/proceedSyncButtonText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:textSize="17sp"
+            android:text="@string/syncNow"
+            android:textColor="@color/colorButtonTextEnabled"
+            android:textAppearance="@style/TextAppearance.AppCompat.Widget.Button.Colored"
+        />
+    </LinearLayout>
+</android.support.constraint.ConstraintLayout>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="42sp"
+    android:orientation="horizontal"
+    android:paddingStart="15dp"
+    android:paddingEnd="15dp">
+
+    <CheckBox
+        android:id="@+id/syncFileSelectorName"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:textAppearance="?android:attr/textAppearanceListItemSecondary"
+        android:textSize="15sp"
+        android:gravity="center_vertical"
+        android:singleLine="true"
+    />
+</LinearLayout>

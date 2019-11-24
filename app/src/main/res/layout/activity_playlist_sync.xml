@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".PlaylistSyncActivity">
+
+    <TextView
+        android:id="@+id/syncPlaylistsPrompt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="25dp"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="15dp"
+        android:textSize="15sp"
+        android:text="@string/syncPlaylistsPrompt"
+        app:layout_constraintTop_toTopOf="parent"
+        />
+
+    <CheckBox
+        android:id="@+id/syncPlaylistsDeleteFiles"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="35dp"
+        android:layout_marginEnd="15dp"
+        android:text="@string/syncPlaylistsDeleteUnselected"
+        android:textSize="15sp"
+        android:singleLine="true"
+        app:layout_constraintTop_toBottomOf="@+id/syncPlaylistsPrompt"
+        app:layout_constraintLeft_toLeftOf="parent"
+        />
+
+    <TextView
+        android:id="@+id/syncPlaylistsCountMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="20dp"
+        android:layout_marginStart="40dp"
+        android:textColor="@color/colorWarning"
+        android:textSize="15sp"
+        android:textStyle="bold|italic"
+        app:layout_constraintTop_toBottomOf="@+id/syncPlaylistsDeleteFiles"
+        />
+
+    <ListView
+        android:id="@+id/syncPlaylistsSelector"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginStart="45dp"
+        android:layout_marginBottom="20dp"
+        android:scrollbars="vertical"
+        app:layout_constraintTop_toBottomOf="@+id/syncPlaylistsCountMessage"
+        app:layout_constraintBottom_toTopOf="@+id/syncPlaylistsStartButton"
+        />
+
+    <TextView
+        android:id="@+id/syncNoPlaylistsMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_marginStart="43dp"
+        android:layout_marginEnd="15dp"
+        android:text="@string/errorServerNotFound"
+        android:textSize="15sp"
+        android:textColor="@color/colorError"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@+id/syncPlaylistsSelector"
+        />
+
+    <android.support.constraint.Guideline
+        android:id="@+id/syncPlaylistsHalfWidthGuideline"
+        android:layout_width="1dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/colorAccent"
+        app:layout_constraintGuide_percent="0.5"/>
+
+    <Button
+        android:id="@+id/syncPlaylistsPreviewButton"
+        style="@style/Widget.AppCompat.Button.Borderless"
+        android:layout_width="@+id/syncPlaylistsHalfWidthGuideline"
+        android:layout_height="58dp"
+        android:background="@color/colorButtonBackground"
+        android:text="@string/syncPreview"
+        android:textColor="@color/colorButtonTextEnabled"
+        android:textSize="17sp"
+        android:onClick="onSyncPlaylistsPreviewButton_Click"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@+id/syncPlaylistsHalfWidthGuideline"
+        />
+
+    <LinearLayout
+        android:id="@+id/syncPlaylistsStartButton"
+        style="@style/Widget.AppCompat.Button.Borderless.Colored"
+        android:layout_width="@+id/syncPlaylistsHalfWidthGuideline"
+        android:layout_height="58dp"
+        android:background="@color/colorButtonBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:onClick="onSyncPlaylistsStartButton_Click"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/syncPlaylistsHalfWidthGuideline"
+        app:layout_constraintRight_toRightOf="parent" >
+
+        <ImageView
+            android:id="@+id/syncPlaylistsStartButtonImage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="8dp"
+            android:tint="@color/colorButtonTextEnabled"
+            android:src="@android:drawable/ic_popup_sync"
+            tools:ignore="ContentDescription"
+        />
+
+        <TextView
+            android:id="@+id/syncPlaylistsStartButtonText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:textSize="17sp"
+            android:text="@string/syncNow"
+            android:textColor="@color/colorButtonTextEnabled"
+            android:textAppearance="@style/TextAppearance.AppCompat.Widget.Button.Colored"
+        />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="2dp"
+        android:layout_height="60dp"
+        android:background="#FFFFFF"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" >
+    </LinearLayout>
+</android.support.constraint.ConstraintLayout>

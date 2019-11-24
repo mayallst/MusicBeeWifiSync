@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:descendantFocusability="beforeDescendants"
+    android:focusableInTouchMode="true"
+    tools:context=".MainActivity">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginBottom="20dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/syncServerStatus"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/syncFrom"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="30dp"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="15dp"
+                    android:layout_marginEnd="5dp"
+                    android:backgroundTint="@color/colorButtonTextDisabled"
+                    android:background="@drawable/ic_arrow_forward"
+                    tools:ignore="ContentDescription"
+                />
+                <TextView
+                    android:id="@+id/syncFromPrompt"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="15dp"
+                    android:text="@string/syncFromPrompt"
+                    android:textSize="16sp"
+                    android:singleLine="true"
+                />
+            </LinearLayout>
+
+            <CheckBox
+                android:id="@+id/syncFromMusicBee"
+                android:text="@string/syncFromDefault"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="40dp"
+                android:layout_marginEnd="15dp"
+                android:textSize="16sp"
+                android:layout_marginTop="1dp"
+                android:checked="true"
+                android:singleLine="true"
+                app:layout_constraintTop_toBottomOf="@+id/syncFrom"
+            />
+
+            <LinearLayout
+                android:id="@+id/syncTo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="30dp"
+                app:layout_constraintTop_toBottomOf="@+id/syncFromMusicBee" >
+
+                <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="15dp"
+                    android:layout_marginEnd="5dp"
+                    android:backgroundTint="@color/colorButtonTextDisabled"
+                    android:background="@drawable/ic_arrow_back"
+                    tools:ignore="ContentDescription"
+                />
+                <TextView
+                    android:id="@+id/syncToPrompt"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="15dp"
+                    android:text="@string/syncToPrompt"
+                    android:textSize="16sp"
+                    android:singleLine="true"
+                    app:layout_constraintTop_toBottomOf="@+id/syncFromMusicBee"
+                />
+            </LinearLayout>
+
+            <CheckBox
+                android:id="@+id/syncToPlayCounts"
+                android:text="@string/syncToPlaycounts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="40dp"
+                android:layout_marginEnd="15dp"
+                android:textSize="16sp"
+                android:layout_marginTop="1dp"
+                app:layout_constraintTop_toBottomOf="@+id/syncTo"
+            />
+
+            <CheckBox
+                android:id="@+id/syncToRatings"
+                android:text="@string/syncToRatings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="40dp"
+                android:layout_marginEnd="15dp"
+                android:textSize="16sp"
+                android:layout_marginTop="1dp"
+                app:layout_constraintTop_toBottomOf="@+id/syncToPlayCounts"
+            />
+
+            <CheckBox
+                android:id="@+id/syncToPlaylists"
+                android:text="@string/syncToPlaylists"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="40dp"
+                android:layout_marginEnd="15dp"
+                android:labelFor="@+id/syncToPlaylistPath"
+                android:textSize="16sp"
+                android:layout_marginTop="1dp"
+                app:layout_constraintTop_toBottomOf="@+id/syncToRatings"
+            />
+
+            <EditText
+                android:id="@+id/syncToPlaylistPath"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="70dp"
+                android:layout_marginEnd="15dp"
+                android:inputType="textUri"
+                android:enabled="false"
+                android:textSize="16sp"
+                android:windowSoftInputMode="stateHidden"
+                app:layout_constraintTop_toBottomOf="@+id/syncToPlaylists"
+            />
+
+            <TextView
+                android:id="@+id/syncToUsingPrompt"
+                android:text="@string/syncToUsingPlayer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="43dp"
+                android:layout_marginEnd="15dp"
+                android:textSize="16sp"
+                android:layout_marginTop="16dp"
+                android:singleLine="true"
+                app:layout_constraintTop_toBottomOf="@+id/syncToPlaylistPath"
+            />
+
+            <RadioGroup
+                android:id="@+id/syncToUsingPlayer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="40dp"
+                android:layout_marginEnd="15dp"
+                app:layout_constraintTop_toBottomOf="@+id/syncToUsingPrompt"
+                android:orientation="vertical">
+
+                <RadioButton
+                    android:id="@+id/syncPlayerGoneMad"
+                    android:layout_height="wrap_content"
+                    android:layout_width="wrap_content"
+                    android:text="GoneMad"
+                    android:textSize="16sp"
+                    android:layout_marginTop="8dp"
+                />
+
+                <RadioButton
+                    android:id="@+id/syncPlayerPowerAmp"
+                    android:layout_height="wrap_content"
+                    android:layout_width="wrap_content"
+                    android:text="PowerAmp"
+                    android:textSize="16sp"
+                    android:layout_marginTop="3dp"
+                />
+            </RadioGroup>
+        </LinearLayout>
+    </ScrollView>
+
+    <TextView
+        android:id="@+id/syncServerStatus"
+        android:text="@string/errorServerNotFound"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="15dp"
+        android:layout_marginEnd="15dp"
+        android:textSize="16sp"
+        android:textColor="@color/colorError"
+        android:layout_marginBottom="20dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/syncPreviewButton"
+    />
+
+    <android.support.constraint.Guideline
+        android:id="@+id/syncHalfWidthGuideline"
+        android:layout_width="1dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/colorAccent"
+        app:layout_constraintGuide_percent="0.5"
+    />
+
+    <Button
+        android:id="@+id/syncPreviewButton"
+        style="@style/Widget.AppCompat.Button.Borderless"
+        android:layout_width="@+id/syncHalfWidthGuideline"
+        android:layout_height="58dp"
+        android:background="@color/colorButtonBackground"
+        android:text="@string/syncPreview"
+        android:textColor="@color/colorButtonTextEnabled"
+        android:textSize="17sp"
+        android:onClick="onSyncPreviewButton_Click"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@+id/syncHalfWidthGuideline"
+    />
+
+    <LinearLayout
+        android:id="@+id/syncStartButton"
+        style="@style/Widget.AppCompat.Button.Borderless.Colored"
+        android:layout_width="@+id/syncHalfWidthGuideline"
+        android:layout_height="58dp"
+        android:background="@color/colorButtonBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:onClick="onSyncStartButton_Click"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/syncHalfWidthGuideline"
+        app:layout_constraintRight_toRightOf="parent" >
+
+        <ImageView
+            android:id="@+id/syncStartButtonImage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="8dp"
+            android:tint="@color/colorButtonTextEnabled"
+            android:src="@android:drawable/ic_popup_sync"
+            tools:ignore="ContentDescription"
+        />
+
+        <TextView
+            android:id="@+id/syncStartButtonText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:textSize="17sp"
+            android:text="@string/syncNow"
+            android:textColor="@color/colorButtonTextEnabled"
+            android:textAppearance="@style/TextAppearance.AppCompat.Widget.Button.Colored"
+        />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="2dp"
+        android:layout_height="60dp"
+        android:background="#FFFFFF"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" >
+    </LinearLayout>
+</android.support.constraint.ConstraintLayout>
