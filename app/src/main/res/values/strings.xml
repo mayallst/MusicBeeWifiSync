@@ -18,7 +18,7 @@
     <string name="settingsStorageExternal">Removable SD Card</string>
     <string name="settingsStorageSdCard1">Removable SD Card (1)</string>
     <string name="settingsStorageSdCard2">Removable SD Card (2)</string>
-    <string name="settingsSelectSdCard">Select the SD Card</string>
+    <string name="settingsSelectSdCard">Select the SD Card root folder</string>
     <string name="settingsGrantAccess">Grant Access</string>
     <string name="settingsDebugMode">Enable debug logging</string>
     <string name="settingsDeviceNamePrompt">Device name:</string>
