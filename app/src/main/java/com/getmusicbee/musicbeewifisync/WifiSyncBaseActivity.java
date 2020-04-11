@@ -13,7 +13,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.storage.StorageManager;
+import android.os.storage.StorageVolume;
 import android.provider.DocumentsContract;
+import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
@@ -111,7 +113,7 @@ abstract class WifiSyncBaseActivity extends AppCompatActivity {
     public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
         if (resultCode == RESULT_OK) {
             WifiSyncServiceSettings.accessPermissionsUri.set(resultData.getData());
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N && !PermissionsHandler.isUserSelectedPermissionsPathValid(WifiSyncServiceSettings.accessPermissionsUri.get())) {
+            if ((Build.VERSION.SDK_INT < Build.VERSION_CODES.N || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) && !PermissionsHandler.isUserSelectedPermissionsPathValid(WifiSyncServiceSettings.accessPermissionsUri.get())) {
                 AlertDialog.Builder errorDialog = new AlertDialog.Builder(this);
                 String segment = WifiSyncServiceSettings.accessPermissionsUri.get().getLastPathSegment();
                 errorDialog.setMessage(String.format(getString(R.string.errorInvalidPermmissionsFolder), segment.substring(segment.indexOf(':') + 1)));
@@ -126,6 +128,7 @@ abstract class WifiSyncBaseActivity extends AppCompatActivity {
                 WifiSyncServiceSettings.permissionPathToSdCardMapping.put(WifiSyncServiceSettings.accessPermissionsUri.get().getLastPathSegment(), grantAccessToSdCard.getPath());
                 accessPermissionsGranted = true;
                 getContentResolver().takePersistableUriPermission(WifiSyncServiceSettings.accessPermissionsUri.get(),Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                WifiSyncServiceSettings.permissionsUpgraded = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q);
                 onStoragePermissionsApproved();
             }
         }
@@ -169,12 +172,14 @@ abstract class WifiSyncBaseActivity extends AppCompatActivity {
         static boolean tryGetStorageAccessGrant(Activity context, int deviceStorageIndex, AtomicReference<Uri> storageRootPermissionedUri) {
             //ErrorHandler.logInfo("get grant", "device=" + deviceStorageIndex + ", " + WifiSyncServiceSettings.permissionPathToSdCardMapping.size());
             storageRootPermissionedUri.set(null);
-            if (deviceStorageIndex == StorageCategory.INTERNAL){
+            if (deviceStorageIndex == StorageCategory.INTERNAL && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
                 return (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
             } else {
                 File sdCard = FileStorageAccess.getSdCardFromIndex(context, deviceStorageIndex);
                 if (sdCard == null) {
                     ErrorHandler.logError("grant", "Invalid sd card = " + deviceStorageIndex);
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !WifiSyncServiceSettings.permissionsUpgraded) {
+                    WifiSyncServiceSettings.permissionPathToSdCardMapping.clear();
                 } else if (WifiSyncServiceSettings.permissionPathToSdCardMapping.size() > 0) {
                     List<UriPermission> permissions = context.getContentResolver().getPersistedUriPermissions();
                     if (permissions.size() == 0) {
@@ -223,21 +228,25 @@ abstract class WifiSyncBaseActivity extends AppCompatActivity {
                 ErrorHandler.logError("demand", "no sd card");
             } else {
                 boolean internalStorage = (sdCard.getPath().equalsIgnoreCase(Environment.getExternalStorageDirectory().getPath()));
-                if (internalStorage){
+                if (internalStorage && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                     ActivityCompat.requestPermissions(context, new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, RW_ACCESS_REQUEST_AND_START_SYNC);
                 } else {
+                    StorageManager storageManager = (StorageManager) context.getSystemService(Context.STORAGE_SERVICE);
                     Intent accessRequestIntent;
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         accessRequestIntent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-                        accessRequestIntent.putExtra("android.content.extra.SHOW_ADVANCED", true);
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            //"content://com.android.externalstorage.documents/tree/" + xxx + "%3A"
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                accessRequestIntent = storageManager.getStorageVolume(sdCard).createOpenDocumentTreeIntent();
+                            }
                             accessRequestIntent.putExtra(DocumentsContract.EXTRA_PROMPT, context.getString(R.string.settingsSelectSdCard));
                         }
+                        accessRequestIntent.putExtra("android.content.extra.SHOW_ADVANCED", true);
                         accessRequestIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                         accessRequestIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                     } else {
-                        StorageManager storageManager = (StorageManager) context.getSystemService(Context.STORAGE_SERVICE);
-                        accessRequestIntent = storageManager.getStorageVolume(sdCard).createAccessIntent((!internalStorage)? null : Environment.DIRECTORY_MUSIC);
+                        accessRequestIntent = storageManager.getStorageVolume(sdCard).createAccessIntent(null);
                     }
                     callback.processAccessRequestIntent(accessRequestIntent);
                 }

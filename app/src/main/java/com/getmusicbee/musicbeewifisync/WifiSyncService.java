@@ -3,15 +3,19 @@ package com.getmusicbee.musicbeewifisync;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.RecoverableSecurityException;
 import android.app.Service;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.database.Cursor;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.FileObserver;
 import android.os.IBinder;
@@ -32,6 +36,7 @@ import java.io.InputStreamReader;
 import java.io.InvalidObjectException;
 import java.io.OutputStream;
 import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -55,7 +60,7 @@ import org.xml.sax.helpers.DefaultHandler;
 import android.support.v4.provider.DocumentFile;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
+import android.text.format.Formatter;
 
 public class WifiSyncService extends Service {
     static final AtomicBoolean syncIsRunning = new AtomicBoolean();
@@ -86,7 +91,7 @@ public class WifiSyncService extends Service {
     private boolean settingsReverseSyncPlayCounts;
     private Thread syncWorkerThread = null;
     private FileStorageAccess storage;
-    private static final int socketConnectTimeout = 2000;
+    private static final int socketConnectTimeout = 10000;
     private static final int socketReadTimeout = 30000;
     private static final int socketReadBufferLength = 131072;
     private static final int FOREGROUND_ID = 2938;
@@ -209,7 +214,7 @@ public class WifiSyncService extends Service {
                 settingsSyncDeleteUnselectedFiles = intent.getBooleanExtra(intentNameSyncDeleteUnselectedFiles, false);
                 settingsSyncCustomFiles = intent.getBooleanExtra(intentNameSyncCustomFiles, false);
                 settingsSyncCustomPlaylistNames = intent.getStringArrayListExtra(intentNameSyncCustomPlaylistNames);
-                syncWorkerThread = new Thread(new SynchronisationWorker());
+                syncWorkerThread = new Thread(new SynchronisationWorker(this));
                 syncWorkerThread.start();
             } else if (action.equals(getString(R.string.actionSyncAbort))) {
                 syncIsRunning.set(false);
@@ -223,11 +228,16 @@ public class WifiSyncService extends Service {
     }
 
     private class SynchronisationWorker implements Runnable {
+        private final Context context;
         private Socket clientSocket;
         private InputStream socketInputStream;
         private DataInputStream socketStreamReader;
         private OutputStream socketOutputStream;
         private DataOutputStream socketStreamWriter;
+
+        SynchronisationWorker(Context context) {
+            this.context = context;
+        }
 
         @Override
         public void run() {
@@ -237,7 +247,7 @@ public class WifiSyncService extends Service {
                     if (WifiSyncServiceSettings.debugMode) {
                         ErrorHandler.logInfo("worker", "no connection for "+ settingsDefaultIpAddressValue + " - trying again");
                     }
-                    ArrayList<CandidateIpAddress> candidateAddresses = findCandidateIpAddresses();
+                    ArrayList<CandidateIpAddress> candidateAddresses = findCandidateIpAddresses(context);
                     for (CandidateIpAddress candidate : candidateAddresses) {
                         if (tryStartSynchronisation(candidate.address)) {
                             anyConnections = true;
@@ -1047,6 +1057,23 @@ public class WifiSyncService extends Service {
                         }
                         break;
                     case WifiSyncServiceSettings.PLAYER_POWERAMP:
+/*
+                            //Uri playlistsUri = Uri.parse("content://com.maxmpz.audioplayer.data/playlists");
+                            //String[] projection = new String[] {"_id", "playlist_path", "playlist", "mtime", "num_files"};
+                            Uri playlistsUri = Uri.parse("content://com.maxmpz.audioplayer.data/playlists/7/files");
+                            String[] projection = new String[] {"folder_file_id", "sort"};
+                            try (Cursor cursor = getContentResolver().query(playlistsUri, projection, null, null, null)) {
+                                while (cursor.moveToNext()) {
+                                    String id = cursor.getString(0);
+                                    String path = cursor.getString(1);
+                                    //String name = cursor.getString(2);
+                                    //long mTime = cursor.getLong(3);
+                                    //Date xx = new Date(mTime * 1000);
+                                    //String aa = cursor.getString(5);
+                                    String x = path + id;
+                                }
+                            }
+*/
                         files = new ArrayList<>();
                         break;
                 }
@@ -1078,18 +1105,18 @@ public class WifiSyncService extends Service {
                     cachedStatsLookup = new FileStatsMap(0);
                 } else {
                     try (FileInputStream stream = new FileInputStream(statsCacheFile)) {
-                        try (BufferedInputStream bufferedStream = new BufferedInputStream(stream, 4096)) {
-                            try (DataInputStream reader = new DataInputStream(bufferedStream)) {
-                                int count = reader.readInt();
-                                cachedStatsLookup = new FileStatsMap(count);
-                                for (int index = 0; index < count; index++) {
-                                    String filename = reader.readUTF();
-                                    byte rating = reader.readByte();
-                                    long lastPlayedDate = reader.readLong();
-                                    int playCount = reader.readInt();
-                                    cachedStatsLookup.put(filename, new FileStatsInfo(filename, rating, lastPlayedDate, playCount));
-                                }
-                            }}}
+                    try (BufferedInputStream bufferedStream = new BufferedInputStream(stream, 4096)) {
+                    try (DataInputStream reader = new DataInputStream(bufferedStream)) {
+                        int count = reader.readInt();
+                        cachedStatsLookup = new FileStatsMap(count);
+                        for (int index = 0; index < count; index++) {
+                            String filename = reader.readUTF();
+                            byte rating = reader.readByte();
+                            long lastPlayedDate = reader.readLong();
+                            int playCount = reader.readInt();
+                            cachedStatsLookup.put(filename, new FileStatsInfo(filename, rating, lastPlayedDate, playCount));
+                        }
+                    }}}
                 }
                 ArrayList<FileStatsInfo> latestStats = null;
                 switch (settingsReverseSyncPlayer) {
@@ -1411,8 +1438,8 @@ public class WifiSyncService extends Service {
     }
 
     @Nullable
-    static String getMusicBeeServerAddress() {
-        ArrayList<CandidateIpAddress> candidateAddresses = findCandidateIpAddresses();
+    static String getMusicBeeServerAddress(Context context) {
+        ArrayList<CandidateIpAddress> candidateAddresses = findCandidateIpAddresses(context);
         if (candidateAddresses.size() == 0) {
             return null;
         } else {
@@ -1421,10 +1448,37 @@ public class WifiSyncService extends Service {
         }
     }
 
-    static ArrayList<CandidateIpAddress> findCandidateIpAddresses() {
+    static ArrayList<CandidateIpAddress> findCandidateIpAddresses(Context context) {
         ArrayList<CandidateIpAddress> candidateAddresses = new ArrayList<>();
-        Enumeration<NetworkInterface> ni;
+        //Enumeration<NetworkInterface> ni;
         try {
+            WifiManager wm = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
+            WifiInfo connectionInfo = wm.getConnectionInfo();
+            if (connectionInfo != null) {
+                int ipAddress = connectionInfo.getIpAddress();
+                String subnet = ((byte) (ipAddress) & 0xFF) + "." + ((byte) (ipAddress >> 8) & 0xFF) + "." + ((byte) (ipAddress >> 16) & 0xFF) + ".";
+                int excludeIndex = ((byte) (ipAddress >> 24) & 0xFF) - 1;
+                if (WifiSyncServiceSettings.debugMode) {
+                    ErrorHandler.logInfo("locate", "search=" + subnet + ", exclude==" + excludeIndex);
+                }
+                AutoResetEvent waitLock = new AutoResetEvent(false);
+                AtomicInteger scannedCount = new AtomicInteger(0);
+                int threadCount = 254;
+                Thread[] thread = new Thread[threadCount];
+                for (int index = 0; index < threadCount; index++) {
+                    if (index != excludeIndex) {
+                        thread[index] = new Thread(new ServerPinger(InetAddress.getByName(subnet + (1 + index)), waitLock, scannedCount, candidateAddresses));
+                        thread[index].start();
+                    }
+                }
+                waitLock.waitOne();
+                for (int index = 0; index < threadCount; index++) {
+                    if (index != excludeIndex) {
+                        thread[index].interrupt();
+                    }
+                }
+            }
+            /*
             HashSet<String> subnetLookup = new HashSet<>();
             ni = NetworkInterface.getNetworkInterfaces();
             while (ni.hasMoreElements()) {
@@ -1434,7 +1488,7 @@ public class WifiSyncService extends Service {
                         Enumeration<InetAddress> niAddresses = networkInterface.getInetAddresses();
                         while (niAddresses.hasMoreElements()) {
                             InetAddress address = niAddresses.nextElement();
-                            if (address instanceof Inet4Address && !address.isLoopbackAddress()) {
+                              if (address instanceof Inet4Address && !address.isLoopbackAddress()) {
                                 byte[] baseAddressValue = address.getAddress();
                                 String subnet = (baseAddressValue[0] & 0xFF) + "." + (baseAddressValue[1] & 0xFF) + "." + (baseAddressValue[2] & 0xFF) + ".";
                                 if (WifiSyncServiceSettings.debugMode) {
@@ -1469,6 +1523,7 @@ public class WifiSyncService extends Service {
                     ErrorHandler.logError("locate", ex);
                 }
             }
+            */
         } catch (Exception ex) {
             ErrorHandler.logError("locate", ex);
         }
@@ -1957,7 +2012,8 @@ class FileStorageAccess {
         try {
             if (isDocumentFileStorage) {
                 // there isnt any API I know of to determine if the media-scanner is still running for document storage
-                String[] projection = new String[] {"count(*)"};
+                //String[] projection = new String[] {"count(*)"};
+                String[] projection = new String[] {"count(" + MediaStore.Files.FileColumns._ID + ")"};
                 int lastDatabaseFileCount = -1;
                 for (int retryCount = 0; retryCount < 30; retryCount ++) {
                     int count = -1;
@@ -1983,7 +2039,7 @@ class FileStorageAccess {
         } catch (Exception ex) {
             ErrorHandler.logError("waitScan", ex);
         }
-        if (deletePlaylistUrls.size() > 0) {
+        if (deletePlaylistUrls.size() > 0 && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             try {
                 String[] projection = new String[] {MediaStore.Audio.Playlists._ID};
                 String selection = MediaStore.Audio.Playlists.DATA + " = ?";
@@ -2004,7 +2060,8 @@ class FileStorageAccess {
                 ErrorHandler.logError("deletePlaylists", ex);
             }
         }
-        if (updatePlaylists.size() > 0) {
+        int i = 0;
+        if (updatePlaylists.size() > 0 && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             try {
                 CaseInsensitiveMap fileIdLookup = new CaseInsensitiveMap();
                 String[] projection = new String[] {MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DATA};
@@ -2221,9 +2278,10 @@ class WifiSyncServiceSettings {
     static int reverseSyncPlayer = 0;
     static boolean reverseSyncPlaylists = false;
     static String reverseSyncPlaylistsPath = "";
-    static boolean reverseSyncRatings = true;
-    static boolean reverseSyncPlayCounts = true;
+    static boolean reverseSyncRatings = false;
+    static boolean reverseSyncPlayCounts = false;
     static boolean debugMode = false;
+    static boolean permissionsUpgraded = false;
 
     static void loadSettings(final Context context) {
         defaultIpAddressValue = "";
@@ -2240,29 +2298,28 @@ class WifiSyncServiceSettings {
                     if (version < 5) {
                         syncFromMusicBee = true;
                     }
-                    if (version > 1) {
-                        int count = reader.readInt();
-                        while (count > 0) {
-                            count --;
-                            String permissionsPath = reader.readUTF();
-                            String sdCardPath = reader.readUTF();
-                            permissionPathToSdCardMapping.put(permissionsPath, sdCardPath);
-                        }
-                        if (version > 2) {
-                            syncDeleteUnselectedFiles = reader.readBoolean();
-                            count = reader.readInt();
-                            while (count > 0) {
-                                count --;
-                                syncCustomPlaylistNames.add(reader.readUTF());
-                            }
-                            if (version > 3) {
-                                reverseSyncPlayer = reader.readInt();
-                                reverseSyncPlaylists = reader.readBoolean();
-                                reverseSyncRatings = reader.readBoolean();
-                                reverseSyncPlayCounts = reader.readBoolean();
-                                reverseSyncPlaylistsPath = reader.readUTF();
-                            }
-                        }
+                    int count = reader.readInt();
+                    while (count > 0) {
+                        count --;
+                        String permissionsPath = reader.readUTF();
+                        String sdCardPath = reader.readUTF();
+                        permissionPathToSdCardMapping.put(permissionsPath, sdCardPath);
+                    }
+                    syncDeleteUnselectedFiles = reader.readBoolean();
+                    count = reader.readInt();
+                    while (count > 0) {
+                        count --;
+                        syncCustomPlaylistNames.add(reader.readUTF());
+                    }
+                    reverseSyncPlayer = reader.readInt();
+                    reverseSyncPlaylists = reader.readBoolean();
+                    reverseSyncRatings = reader.readBoolean();
+                    reverseSyncPlayCounts = reader.readBoolean();
+                    reverseSyncPlaylistsPath = reader.readUTF();
+                    if (version < 6) {
+                        permissionsUpgraded = false;
+                    } else {
+                        permissionsUpgraded = reader.readBoolean();
                     }
                 }}
             }
@@ -2277,7 +2334,7 @@ class WifiSyncServiceSettings {
             File settingsFile = new File(context.getFilesDir(), "MusicBeeWifiSyncSettings.dat");
             try (FileOutputStream fs = new FileOutputStream(settingsFile)) {
             try (DataOutputStream writer = new DataOutputStream(fs)) {
-                writer.writeInt(5);
+                writer.writeInt(6);
                 writer.writeUTF(defaultIpAddressValue);
                 writer.writeUTF(deviceName);
                 writer.writeInt(deviceStorageIndex);
@@ -2297,6 +2354,7 @@ class WifiSyncServiceSettings {
                 writer.writeBoolean(reverseSyncRatings);
                 writer.writeBoolean(reverseSyncPlayCounts);
                 writer.writeUTF(reverseSyncPlaylistsPath);
+                writer.writeBoolean(permissionsUpgraded);
             }}
         }
         catch (Exception ex) {

@@ -176,7 +176,7 @@ public class SettingsActivity extends WifiSyncBaseActivity {
         Thread locateServerThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                final String serverIPAddress = WifiSyncService.getMusicBeeServerAddress();
+                final String serverIPAddress = WifiSyncService.getMusicBeeServerAddress(mainWindow);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
