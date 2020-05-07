@@ -40,7 +40,7 @@
     <string name="syncPlaylists0">Nenhuma playlist selecionada</string>
     <string name="syncPlaylists1">1 playlist selecionada</string>
     <string name="syncPlaylistsN">%d playlists selecionadas</string>
-    <string name="syncPlaylistsDeleteUnselected">apagar arquivos fora das playlists selecionadas do dispositivo</string>
+    <string name="syncPlaylistsDeleteUnselected">apagar arquivos fora das playlists escolhidas</string>
     <string name="syncStop">Parar</string>
     <string name="syncCancel">Cancelar</string>
     <string name="syncMore">Mais</string>
