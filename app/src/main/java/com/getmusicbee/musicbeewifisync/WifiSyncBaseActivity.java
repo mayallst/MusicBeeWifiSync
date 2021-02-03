@@ -13,18 +13,17 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.storage.StorageManager;
-import android.os.storage.StorageVolume;
 import android.provider.DocumentsContract;
-import android.provider.MediaStore;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AlertDialog;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import android.support.v7.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.view.MenuItem;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 
 abstract class WifiSyncBaseActivity extends AppCompatActivity {
     protected WifiSyncBaseActivity mainWindow = this;

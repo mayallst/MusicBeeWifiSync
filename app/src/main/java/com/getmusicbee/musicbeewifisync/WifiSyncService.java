@@ -3,25 +3,22 @@ package com.getmusicbee.musicbeewifisync;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.RecoverableSecurityException;
 import android.app.Service;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentSender;
 import android.database.Cursor;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.FileObserver;
 import android.os.IBinder;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
-import android.support.v4.app.NotificationCompat;
+import androidx.core.app.NotificationCompat;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -37,10 +34,8 @@ import java.io.InvalidObjectException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.Inet4Address;
-import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.NetworkInterface;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -48,21 +43,21 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import javax.xml.parsers.SAXParserFactory;
+
 import org.xml.sax.Attributes;
 import org.xml.sax.helpers.DefaultHandler;
-import android.support.v4.provider.DocumentFile;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.text.format.Formatter;
+
+import androidx.documentfile.provider.DocumentFile;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 public class WifiSyncService extends Service {
     static final AtomicBoolean syncIsRunning = new AtomicBoolean();
@@ -247,9 +242,9 @@ public class WifiSyncService extends Service {
                 boolean anyConnections = tryStartSynchronisation(InetAddress.getByName(settingsDefaultIpAddressValue));
                 if (!anyConnections) {
                     if (WifiSyncServiceSettings.debugMode) {
-                        ErrorHandler.logInfo("worker", "no connection for "+ settingsDefaultIpAddressValue + " - trying again");
+                        ErrorHandler.logInfo("worker", "no connection for " + settingsDefaultIpAddressValue + " - trying again");
                     }
-                    ArrayList<CandidateIpAddress> candidateAddresses = findCandidateIpAddresses(context);
+                    ArrayList<CandidateIpAddress> candidateAddresses = findCandidateIpAddresses(new IpAddressProviderImpl(context, null));
                     for (CandidateIpAddress candidate : candidateAddresses) {
                         if (tryStartSynchronisation(candidate.address)) {
                             anyConnections = true;
@@ -298,99 +293,104 @@ public class WifiSyncService extends Service {
                         clientSocket.setPerformancePreferences(0, 0, 1);
                         clientSocket.setTcpNoDelay(true);
                         try (InputStream socketInputStream = clientSocket.getInputStream()) {
-                        try (BufferedInputStream bufferedSocketInputStream = new BufferedInputStream(socketInputStream, 8192)) {
-                        try (DataInputStream socketStreamReader = new DataInputStream((bufferedSocketInputStream))) {
-                        try (OutputStream socketOutputStream = clientSocket.getOutputStream()) {
-                        try (BufferedOutputStream bufferedSocketOutputStream = new BufferedOutputStream(socketOutputStream, 65536)) {
-                        try (DataOutputStream socketStreamWriter = new DataOutputStream(bufferedSocketOutputStream)) {
-                            this.socketInputStream = socketInputStream;
-                            this.socketStreamReader = socketStreamReader;
-                            this.socketOutputStream = socketOutputStream;
-                            this.socketStreamWriter = socketStreamWriter;
-                            int failedSyncFilesCount = 0;
-                            try {
-                                clientSocket.setSoTimeout(socketReadTimeout);
-                                String hello = readString();
-                                serverLocated = hello.startsWith(serverHelloPrefix);
-                                if (WifiSyncServiceSettings.debugMode) {
-                                    ErrorHandler.logInfo("tryStart", "hello=" + serverLocated + ",fromMB=" + settingsSyncFromMusicBee + ",custfiles=" + settingsSyncCustomFiles + ",preview=" + settingsSyncPreview + ",dev=" + settingsDeviceName + "," + settingsDeviceStorageIndex);
-                                }
-                                if (!serverLocated) {
-                                    return false;
-                                }
-                                writeString(clientHelloVersion);
-                                writeString((settingsSyncCustomFiles) ? commandSyncToDevice : commandSyncDevice);
-                                writeByte((!settingsSyncPreview) ? 0 : 1);
-                                writeString(settingsDeviceName);
-                                writeByte(settingsDeviceStorageIndex);
-                                if (!settingsSyncCustomFiles) {
-                                    writeString((settingsSyncFromMusicBee) ? "F" : "T");
-                                    writeString("F");
-                                    writeString("0");
-                                } else {
-                                    writeString("T");
-                                    writeString((!settingsSyncDeleteUnselectedFiles) ? "F" : "T");
-                                    writeString(String.valueOf(settingsSyncCustomPlaylistNames.size()));
-                                    for (String playlistName : settingsSyncCustomPlaylistNames) {
-                                        writeString(playlistName);
-                                    }
-                                }
-                                writeString(syncEndOfData);
-                                flushWriter();
-                                boolean storageProfileMatched = (readByte() != 0);
-                                readToEndOfCommand();
-                                if (!storageProfileMatched) {
-                                    syncErrorMessageId.set(R.string.errorConfigNotMatched);
-                                    setPreviewFailed();
-                                    return true;
-                                } else {
-                                    File sdCard = FileStorageAccess.getSdCardFromIndex(getApplicationContext(), settingsDeviceStorageIndex);
-                                    if (sdCard == null) {
-                                        if (WifiSyncServiceSettings.debugMode) {
-                                            ErrorHandler.logInfo("tryStart", "SD Card not found");
+                            try (BufferedInputStream bufferedSocketInputStream = new BufferedInputStream(socketInputStream, 8192)) {
+                                try (DataInputStream socketStreamReader = new DataInputStream((bufferedSocketInputStream))) {
+                                    try (OutputStream socketOutputStream = clientSocket.getOutputStream()) {
+                                        try (BufferedOutputStream bufferedSocketOutputStream = new BufferedOutputStream(socketOutputStream, 65536)) {
+                                            try (DataOutputStream socketStreamWriter = new DataOutputStream(bufferedSocketOutputStream)) {
+                                                this.socketInputStream = socketInputStream;
+                                                this.socketStreamReader = socketStreamReader;
+                                                this.socketOutputStream = socketOutputStream;
+                                                this.socketStreamWriter = socketStreamWriter;
+                                                int failedSyncFilesCount = 0;
+                                                try {
+                                                    clientSocket.setSoTimeout(socketReadTimeout);
+                                                    String hello = readString();
+                                                    serverLocated = hello.startsWith(serverHelloPrefix);
+                                                    if (WifiSyncServiceSettings.debugMode) {
+                                                        ErrorHandler.logInfo("tryStart", "hello=" + serverLocated + ",fromMB=" + settingsSyncFromMusicBee + ",custfiles=" + settingsSyncCustomFiles + ",preview=" + settingsSyncPreview + ",dev=" + settingsDeviceName + "," + settingsDeviceStorageIndex);
+                                                    }
+                                                    if (!serverLocated) {
+                                                        return false;
+                                                    }
+                                                    writeString(clientHelloVersion);
+                                                    writeString((settingsSyncCustomFiles) ? commandSyncToDevice : commandSyncDevice);
+                                                    writeByte((!settingsSyncPreview) ? 0 : 1);
+                                                    writeString(settingsDeviceName);
+                                                    writeByte(settingsDeviceStorageIndex);
+                                                    if (!settingsSyncCustomFiles) {
+                                                        writeString((settingsSyncFromMusicBee) ? "F" : "T");
+                                                        writeString("F");
+                                                        writeString("0");
+                                                    } else {
+                                                        writeString("T");
+                                                        writeString((!settingsSyncDeleteUnselectedFiles) ? "F" : "T");
+                                                        writeString(String.valueOf(settingsSyncCustomPlaylistNames.size()));
+                                                        for (String playlistName : settingsSyncCustomPlaylistNames) {
+                                                            writeString(playlistName);
+                                                        }
+                                                    }
+                                                    writeString(syncEndOfData);
+                                                    flushWriter();
+                                                    boolean storageProfileMatched = (readByte() != 0);
+                                                    readToEndOfCommand();
+                                                    if (!storageProfileMatched) {
+                                                        syncErrorMessageId.set(R.string.errorConfigNotMatched);
+                                                        setPreviewFailed();
+                                                        return true;
+                                                    } else {
+                                                        File sdCard = FileStorageAccess.getSdCardFromIndex(getApplicationContext(), settingsDeviceStorageIndex);
+                                                        if (sdCard == null) {
+                                                            if (WifiSyncServiceSettings.debugMode) {
+                                                                ErrorHandler.logInfo("tryStart", "SD Card not found");
+                                                            }
+                                                            writeString(syncStatusFAIL);
+                                                            flushWriter();
+                                                            syncErrorMessageId.set(R.string.errorSdCardNotFound);
+                                                            return true;
+                                                        }
+                                                        storage = new FileStorageAccess(getApplicationContext(), sdCard.getPath(), settingsAccessPermissionsUri);
+                                                    }
+                                                    writeString("MOUNTED");
+                                                    failedSyncFilesCount = syncFailedFiles.size();
+                                                    syncDevice();
+                                                } catch (InterruptedException ex) {
+                                                    if (WifiSyncServiceSettings.debugMode) {
+                                                        ErrorHandler.logError("tryStart", ex);
+                                                    }
+                                                    if (storage != null) {
+                                                        storage.waitScanFiles();
+                                                    }
+                                                    throw ex;
+                                                } catch (SocketException ex) {
+                                                    ErrorHandler.logError("tryStart" + socketFailRetryAttempts, ex);
+                                                    if (storage != null) {
+                                                        storage.waitScanFiles();
+                                                    }
+                                                    if (socketFailRetryAttempts > 16) {
+                                                        syncErrorMessageId.set(R.string.errorSyncNonSpecific);
+                                                    } else {
+                                                        socketFailRetryAttempts++;
+                                                        if (syncFailedFiles.size() > failedSyncFilesCount) {
+                                                            syncFailedFiles.remove(failedSyncFilesCount);
+                                                        }
+                                                        continue;
+                                                    }
+                                                } catch (Exception ex) {
+                                                    ErrorHandler.logError("tryStart" + socketFailRetryAttempts, ex);
+                                                    if (storage != null) {
+                                                        storage.waitScanFiles();
+                                                    }
+                                                    syncErrorMessageId.set(R.string.errorSyncNonSpecific);
+                                                    setPreviewFailed();
+                                                }
+                                                return true;
+                                            }
                                         }
-                                        writeString(syncStatusFAIL);
-                                        flushWriter();
-                                        syncErrorMessageId.set(R.string.errorSdCardNotFound);
-                                        return true;
                                     }
-                                    storage = new FileStorageAccess(getApplicationContext(), sdCard.getPath(), settingsAccessPermissionsUri);
                                 }
-                                writeString("MOUNTED");
-                                failedSyncFilesCount = syncFailedFiles.size();
-                                syncDevice();
-                            } catch (InterruptedException ex) {
-                                if (WifiSyncServiceSettings.debugMode) {
-                                    ErrorHandler.logError("tryStart", ex);
-                                }
-                                if (storage != null) {
-                                    storage.waitScanFiles();
-                                }
-                                throw ex;
-                            } catch (SocketException ex) {
-                                ErrorHandler.logError("tryStart" + socketFailRetryAttempts, ex);
-                                if (storage != null) {
-                                    storage.waitScanFiles();
-                                }
-                                if (socketFailRetryAttempts > 16) {
-                                    syncErrorMessageId.set(R.string.errorSyncNonSpecific);
-                                } else {
-                                    socketFailRetryAttempts ++;
-                                    if (syncFailedFiles.size() > failedSyncFilesCount) {
-                                        syncFailedFiles.remove(failedSyncFilesCount);
-                                    }
-                                    continue;
-                                }
-                            } catch (Exception ex) {
-                                ErrorHandler.logError("tryStart" + socketFailRetryAttempts, ex);
-                                if (storage != null) {
-                                    storage.waitScanFiles();
-                                }
-                                syncErrorMessageId.set(R.string.errorSyncNonSpecific);
-                                setPreviewFailed();
                             }
-                            return true;
-                        }}}}}}
+                        }
                     }
                 }
             } catch (InterruptedException ex) {
@@ -550,6 +550,7 @@ public class WifiSyncService extends Service {
                 throw new SocketException(ex.toString());
             }
         }
+
         private short readShort() throws SocketException {
             try {
                 return socketStreamReader.readShort();
@@ -671,14 +672,14 @@ public class WifiSyncService extends Service {
 
         private void getFiles(String folderPath, boolean includeSubFolders) throws Exception {
             ContentResolver contentResolver = getApplicationContext().getContentResolver();
-            String[] projection = new String[] {MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.DATE_MODIFIED};
+            String[] projection = new String[]{MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.DATE_MODIFIED};
             int storageRootPathLength = storage.storageRootPath.length() + 1;
             String folderUrl = storage.getFileUrl(folderPath);
             String selection = "substr(" + MediaStore.Files.FileColumns.DATA + ",1," + folderUrl.length() + ") = ? AND " + MediaStore.Files.FileColumns.SIZE + " > 0";
             if (WifiSyncServiceSettings.debugMode) {
                 ErrorHandler.logInfo("getFiles", "Get: " + folderPath + ",url=" + folderUrl + ", inc=" + includeSubFolders);
             }
-            try (Cursor cursor = contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, selection, new String[] {folderUrl}, null)) {
+            try (Cursor cursor = contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, selection, new String[]{folderUrl}, null)) {
                 if (cursor == null) {
                     ErrorHandler.logInfo("getFiles", "no cursor");
                 } else {
@@ -1095,18 +1096,20 @@ public class WifiSyncService extends Service {
                     cachedStatsLookup = new FileStatsMap(0);
                 } else {
                     try (FileInputStream stream = new FileInputStream(statsCacheFile)) {
-                    try (BufferedInputStream bufferedStream = new BufferedInputStream(stream, 4096)) {
-                    try (DataInputStream reader = new DataInputStream(bufferedStream)) {
-                        int count = reader.readInt();
-                        cachedStatsLookup = new FileStatsMap(count);
-                        for (int index = 0; index < count; index++) {
-                            String filename = reader.readUTF();
-                            byte rating = reader.readByte();
-                            long lastPlayedDate = reader.readLong();
-                            int playCount = reader.readInt();
-                            cachedStatsLookup.put(filename, new FileStatsInfo(filename, rating, lastPlayedDate, playCount));
+                        try (BufferedInputStream bufferedStream = new BufferedInputStream(stream, 4096)) {
+                            try (DataInputStream reader = new DataInputStream(bufferedStream)) {
+                                int count = reader.readInt();
+                                cachedStatsLookup = new FileStatsMap(count);
+                                for (int index = 0; index < count; index++) {
+                                    String filename = reader.readUTF();
+                                    byte rating = reader.readByte();
+                                    long lastPlayedDate = reader.readLong();
+                                    int playCount = reader.readInt();
+                                    cachedStatsLookup.put(filename, new FileStatsInfo(filename, rating, lastPlayedDate, playCount));
+                                }
+                            }
                         }
-                    }}}
+                    }
                 }
                 ArrayList<FileStatsInfo> latestStats = null;
                 switch (settingsReverseSyncPlayer) {
@@ -1180,7 +1183,9 @@ public class WifiSyncService extends Service {
                                         writer.writeInt(stats.playCount);
                                     }
                                     writer.flush();
-                                }}}
+                                }
+                            }
+                        }
                     }
                     writeString(syncEndOfData);
                     writeString(syncStatusOK);
@@ -1202,7 +1207,7 @@ public class WifiSyncService extends Service {
             ArrayList<FileStatsInfo> results = new ArrayList<>();
             ContentResolver contentResolver = getContentResolver();
             String[] projection = {"folders.path", "folder_files.name", "folder_files.rating", "folder_files.played_times", "folder_files.played_at"};
-            try (Cursor cursor = contentResolver.query(Uri.parse("content://com.maxmpz.audioplayer.data/files"), projection,null,null,null)) {
+            try (Cursor cursor = contentResolver.query(Uri.parse("content://com.maxmpz.audioplayer.data/files"), projection, null, null, null)) {
                 if (cursor != null) {
                     while (cursor.moveToNext()) {
                         String filePath = cursor.getString(0) + cursor.getString(1);
@@ -1220,7 +1225,7 @@ public class WifiSyncService extends Service {
         }
 
         private ArrayList<FileStatsInfo> loadGoneMadStats() throws Exception {
-            File statsFile = new File(FileStorageAccess.getSdCardFromIndex(getApplicationContext(), 0).getPath(),"gmmp/stats.xml");
+            File statsFile = new File(FileStorageAccess.getSdCardFromIndex(getApplicationContext(), 0).getPath(), "gmmp/stats.xml");
             if (!statsFile.exists()) {
                 try (FileOutputStream stream = new FileOutputStream(statsFile)) {
                     stream.write(0);
@@ -1404,69 +1409,63 @@ public class WifiSyncService extends Service {
         try (Socket clientSocket = new Socket()) {
             clientSocket.connect(new InetSocketAddress(address, serverPort), socketConnectTimeout);
             try (InputStream socketInputStream = clientSocket.getInputStream()) {
-            try (DataInputStream socketStreamReader = new DataInputStream((socketInputStream))) {
-            try (OutputStream socketOutputStream = clientSocket.getOutputStream()) {
-            try (DataOutputStream socketStreamWriter = new DataOutputStream(socketOutputStream)) {
-                clientSocket.setSoTimeout(socketReadTimeout);
-                String hello = socketStreamReader.readUTF();
-                if (hello.startsWith(serverHelloPrefix)) {
-                    socketStreamWriter.writeUTF(clientHelloVersion);
-                    socketStreamWriter.writeUTF("GetPlaylists");
-                    socketStreamWriter.writeUTF(syncEndOfData);
-                    socketStreamWriter.flush();
-                    while (true) {
-                        String playlistName = socketStreamReader.readUTF();
-                        if (playlistName.length() == 0) {
-                            break;
+                try (DataInputStream socketStreamReader = new DataInputStream((socketInputStream))) {
+                    try (OutputStream socketOutputStream = clientSocket.getOutputStream()) {
+                        try (DataOutputStream socketStreamWriter = new DataOutputStream(socketOutputStream)) {
+                            clientSocket.setSoTimeout(socketReadTimeout);
+                            String hello = socketStreamReader.readUTF();
+                            if (hello.startsWith(serverHelloPrefix)) {
+                                socketStreamWriter.writeUTF(clientHelloVersion);
+                                socketStreamWriter.writeUTF("GetPlaylists");
+                                socketStreamWriter.writeUTF(syncEndOfData);
+                                socketStreamWriter.flush();
+                                while (true) {
+                                    String playlistName = socketStreamReader.readUTF();
+                                    if (playlistName.length() == 0) {
+                                        break;
+                                    }
+                                    playlists.add(playlistName);
+                                }
+                            }
                         }
-                        playlists.add(playlistName);
                     }
                 }
-            }}}}
+            }
         }
         return playlists;
     }
 
     @Nullable
-    static String getMusicBeeServerAddress(Context context) {
-        ArrayList<CandidateIpAddress> candidateAddresses = findCandidateIpAddresses(context);
+    static String getMusicBeeServerAddress(Context context, InetAddress serverIP) {
+        IpAddressProvider ipProvider = new IpAddressProviderImpl(context, serverIP);
+        ArrayList<CandidateIpAddress> candidateAddresses = findCandidateIpAddresses(ipProvider);
         if (candidateAddresses.size() == 0) {
             return null;
         } else {
             CandidateIpAddress candidate = candidateAddresses.get(0);
-            return (!candidate.syncConfigMatched) ? "FAIL": candidate.toString();
+            return (!candidate.syncConfigMatched) ? "FAIL" : candidate.toString();
         }
     }
 
-    static ArrayList<CandidateIpAddress> findCandidateIpAddresses(Context context) {
+    static ArrayList<CandidateIpAddress> findCandidateIpAddresses(IpAddressProvider ipProvider) {
         ArrayList<CandidateIpAddress> candidateAddresses = new ArrayList<>();
         //Enumeration<NetworkInterface> ni;
         try {
-            WifiManager wm = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
-            WifiInfo connectionInfo = wm.getConnectionInfo();
-            if (connectionInfo != null) {
-                int ipAddress = connectionInfo.getIpAddress();
-                String subnet = ((byte) (ipAddress) & 0xFF) + "." + ((byte) (ipAddress >> 8) & 0xFF) + "." + ((byte) (ipAddress >> 16) & 0xFF) + ".";
-                int excludeIndex = ((byte) (ipAddress >> 24) & 0xFF) - 1;
-                if (WifiSyncServiceSettings.debugMode) {
-                    ErrorHandler.logInfo("locate", "search=" + subnet + ", exclude==" + excludeIndex);
-                }
-                AutoResetEvent waitLock = new AutoResetEvent(false);
-                AtomicInteger scannedCount = new AtomicInteger(0);
-                int threadCount = 254;
-                Thread[] thread = new Thread[threadCount];
-                for (int index = 0; index < threadCount; index++) {
-                    if (index != excludeIndex) {
-                        thread[index] = new Thread(new ServerPinger(InetAddress.getByName(subnet + (1 + index)), waitLock, scannedCount, candidateAddresses));
-                        thread[index].start();
-                    }
-                }
-                waitLock.waitOne();
-                for (int index = 0; index < threadCount; index++) {
-                    if (index != excludeIndex) {
-                        thread[index].interrupt();
-                    }
-                }
+            if (WifiSyncServiceSettings.debugMode) {
+                ErrorHandler.logInfo("locate", "search=" + ipProvider.getIpSearchPrefix() + ", exclude=" + ipProvider.getDeviceAddress().getHostAddress());
+            }
+            AutoResetEvent waitLock = new AutoResetEvent(false);
+            AtomicInteger scannedCount = new AtomicInteger(0);
+
+            ArrayList<Thread> threads = new ArrayList<>(200);
+            for (InetAddress ipAddr: ipProvider) {
+                Thread tmp = new Thread(new ServerPinger(ipAddr, waitLock, scannedCount, candidateAddresses));
+                threads.add(tmp);
+                tmp.start();
+            }
+            waitLock.waitOne();
+            for (Thread thread: threads) {
+                thread.interrupt();
             }
             /*
             HashSet<String> subnetLookup = new HashSet<>();
@@ -1561,42 +1560,44 @@ public class WifiSyncService extends Service {
                     }
                     try {
                         try (InputStream socketInputStream = clientSocket.getInputStream()) {
-                        try (DataInputStream socketStreamReader = new DataInputStream((socketInputStream))) {
-                        try (OutputStream socketOutputStream = clientSocket.getOutputStream()) {
-                        try (DataOutputStream socketStreamWriter = new DataOutputStream(socketOutputStream)) {
-                            clientSocket.setSoTimeout(socketReadTimeout);
-                            String hello = socketStreamReader.readUTF();
-                            if (WifiSyncServiceSettings.debugMode) {
-                                ErrorHandler.logInfo("ping", "hello=" + hello);
-                            }
-                            if (hello.startsWith(serverHelloPrefix)) {
-                                socketStreamWriter.writeUTF(clientHelloVersion);
-                                socketStreamWriter.writeUTF("Ping");
-                                socketStreamWriter.writeByte(0);
-                                socketStreamWriter.writeUTF(WifiSyncServiceSettings.deviceName);
-                                socketStreamWriter.writeByte(WifiSyncServiceSettings.deviceStorageIndex);
-                                socketStreamWriter.writeUTF(syncEndOfData);
-                                socketStreamWriter.flush();
-                                String status = socketStreamReader.readUTF();
-                                connected = true;
-                                if (WifiSyncServiceSettings.debugMode) {
-                                    ErrorHandler.logInfo("ping", "matched=" + address.toString() + ",status=" + status);
-                                }
-                                if (candidateAddresses != null) {
-                                    synchronized (candidateAddresses) {
-                                        candidateAddresses.add(new CandidateIpAddress((Inet4Address) address, status.equals("OK")));
-                                        waitLock.set();
+                            try (DataInputStream socketStreamReader = new DataInputStream((socketInputStream))) {
+                                try (OutputStream socketOutputStream = clientSocket.getOutputStream()) {
+                                    try (DataOutputStream socketStreamWriter = new DataOutputStream(socketOutputStream)) {
+                                        clientSocket.setSoTimeout(socketReadTimeout);
+                                        String hello = socketStreamReader.readUTF();
+                                        if (WifiSyncServiceSettings.debugMode) {
+                                            ErrorHandler.logInfo("ping", "hello=" + hello);
+                                        }
+                                        if (hello.startsWith(serverHelloPrefix)) {
+                                            socketStreamWriter.writeUTF(clientHelloVersion);
+                                            socketStreamWriter.writeUTF("Ping");
+                                            socketStreamWriter.writeByte(0);
+                                            socketStreamWriter.writeUTF(WifiSyncServiceSettings.deviceName);
+                                            socketStreamWriter.writeByte(WifiSyncServiceSettings.deviceStorageIndex);
+                                            socketStreamWriter.writeUTF(syncEndOfData);
+                                            socketStreamWriter.flush();
+                                            String status = socketStreamReader.readUTF();
+                                            connected = true;
+                                            if (WifiSyncServiceSettings.debugMode) {
+                                                ErrorHandler.logInfo("ping", "matched=" + address.toString() + ",status=" + status);
+                                            }
+                                            if (candidateAddresses != null) {
+                                                synchronized (candidateAddresses) {
+                                                    candidateAddresses.add(new CandidateIpAddress((Inet4Address) address, status.equals("OK")));
+                                                    waitLock.set();
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
-                        }}}}
+                        }
                     } catch (Exception ex) {
                         ErrorHandler.logError("ping", ex);
                     }
                 }
             } catch (Exception ex) {
-            }
-            finally {
+            } finally {
                 if (candidateAddresses != null) {
                     if (scannedCount.incrementAndGet() == 253) {
                         waitLock.set();
@@ -1615,7 +1616,8 @@ public class WifiSyncService extends Service {
             this.syncConfigMatched = syncConfigMatched;
         }
 
-        @Override @NonNull
+        @Override
+        @NonNull
         public String toString() {
             return address.toString().substring(1);
         }
@@ -1707,7 +1709,7 @@ class FileStorageAccess {
         ArrayList<FileInfo> files = new ArrayList<>();
         if (isDocumentFileStorage) {
             Uri folderUri = DocumentsContract.buildChildDocumentsUriUsingTree(storageRootPermissionedUri, getDocumentId(folderPath));
-            try (Cursor cursor = contentResolver.query(folderUri, new String[] {"document_id"},null,null,null)) {
+            try (Cursor cursor = contentResolver.query(folderUri, new String[]{"document_id"}, null, null, null)) {
                 if (cursor != null) {
                     while (cursor.moveToNext()) {
                         String documentId = cursor.getString(0);
@@ -1779,7 +1781,7 @@ class FileStorageAccess {
     private Uri createDocumentFile(String filePath) throws Exception {
         int charIndex = filePath.lastIndexOf('/');
         if (charIndex <= 0) {
-            String message =  "Invalid filename: " + filePath;
+            String message = "Invalid filename: " + filePath;
             ErrorHandler.logError("createFile", message);
             throw new InvalidObjectException(message);
         }
@@ -1790,8 +1792,7 @@ class FileStorageAccess {
         //if (file.exists()) {
         if (documentFileExists(fileUri)) {
             return fileUri;
-        }
-        else {
+        } else {
             String parentPath = filePath.substring(0, charIndex);
             Uri folderUri = createDocumentFolder(parentPath);
             try {
@@ -1813,8 +1814,7 @@ class FileStorageAccess {
         //if (folder.exists()) {
         if (documentFileExists(folderUri)) {
             return folderUri;
-        }
-        else {
+        } else {
             int charIndex = folderPath.lastIndexOf('/');
             String parentPath;
             if (charIndex == -1) {
@@ -1833,7 +1833,7 @@ class FileStorageAccess {
     }
 
     private boolean documentFileExists(Uri fileUri) {
-        try (Cursor cursor = contentResolver.query(fileUri, new String[] {DocumentsContract.Document.COLUMN_DOCUMENT_ID}, null, null, null)) {
+        try (Cursor cursor = contentResolver.query(fileUri, new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID}, null, null, null)) {
             if (cursor == null) {
                 return false;
             } else {
@@ -1843,7 +1843,8 @@ class FileStorageAccess {
             // ignore file not found errors
         } catch (Exception ex) {
             // not completely comfortable ignoring if this was to happen, but it replicates the Android implementation
-            if (BuildConfig.DEBUG) ErrorHandler.logInfo("exists", fileUri.toString() + ": " + ex.toString());
+            if (BuildConfig.DEBUG)
+                ErrorHandler.logInfo("exists", fileUri.toString() + ": " + ex.toString());
         }
         return false;
     }
@@ -1993,7 +1994,7 @@ class FileStorageAccess {
 */
         } else {
             fileScanCount.getAndIncrement();
-            MediaScannerConnection.scanFile(context, new String[] {fileUrl}, null, new MediaScannerConnection.OnScanCompletedListener() {
+            MediaScannerConnection.scanFile(context, new String[]{fileUrl}, null, new MediaScannerConnection.OnScanCompletedListener() {
                 public void onScanCompleted(String path, Uri uri) {
                     fileScanCount.getAndDecrement();
                     synchronized (fileScanWait) {
@@ -2012,9 +2013,9 @@ class FileStorageAccess {
             if (isDocumentFileStorage) {
                 // there isnt any API I know of to determine if the media-scanner is still running for document storage
                 //String[] projection = new String[] {"count(*)"};
-                String[] projection = new String[] {"count(" + MediaStore.Files.FileColumns._ID + ")"};
+                String[] projection = new String[]{"count(" + MediaStore.Files.FileColumns._ID + ")"};
                 int lastDatabaseFileCount = -1;
-                for (int retryCount = 0; retryCount < 30; retryCount ++) {
+                for (int retryCount = 0; retryCount < 30; retryCount++) {
                     int count = -1;
                     try (Cursor cursor = contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, null, null, null)) {
                         if (cursor != null) {
@@ -2040,12 +2041,12 @@ class FileStorageAccess {
         }
         if (deletePlaylistUrls.size() > 0 && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             try {
-                String[] projection = new String[] {MediaStore.Audio.Playlists._ID};
+                String[] projection = new String[]{MediaStore.Audio.Playlists._ID};
                 String selection = MediaStore.Audio.Playlists.DATA + " = ?";
                 for (String filePath : deletePlaylistUrls) {
                     String playlistUrl = getFileUrl(filePath);
                     long playlistId = 0;
-                    try (Cursor cursor = contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, projection, selection, new String[] {playlistUrl}, null)) {
+                    try (Cursor cursor = contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, projection, selection, new String[]{playlistUrl}, null)) {
                         if (cursor != null && cursor.moveToFirst()) {
                             playlistId = cursor.getLong(0);
                         }
@@ -2053,7 +2054,7 @@ class FileStorageAccess {
                     if (playlistId != 0) {
                         contentResolver.delete(MediaStore.Audio.Playlists.Members.getContentUri("external", playlistId), null, null);
                     }
-                    contentResolver.delete(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, MediaStore.Audio.Playlists.DATA + " = ?", new String[] {playlistUrl});
+                    contentResolver.delete(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, MediaStore.Audio.Playlists.DATA + " = ?", new String[]{playlistUrl});
                 }
             } catch (Exception ex) {
                 ErrorHandler.logError("deletePlaylists", ex);
@@ -2063,9 +2064,9 @@ class FileStorageAccess {
         if (updatePlaylists.size() > 0 && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             try {
                 CaseInsensitiveMap fileIdLookup = new CaseInsensitiveMap();
-                String[] projection = new String[] {MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DATA};
+                String[] projection = new String[]{MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DATA};
                 String selection = "substr(" + MediaStore.Files.FileColumns.DATA + ",1," + storageRootPath.length() + ") = ?"; // AND " + MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO;
-                try (Cursor cursor = contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, selection, new String[] {storageRootPath}, null)) {
+                try (Cursor cursor = contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, selection, new String[]{storageRootPath}, null)) {
                     if (cursor != null) {
                         int idColumnIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns._ID);
                         int urlColumnIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA);
@@ -2090,7 +2091,7 @@ class FileStorageAccess {
                         }
                         ContentValues values = new ContentValues();
                         values.put(MediaStore.Audio.Playlists.DATE_MODIFIED, fileDateModified);
-                        int updatedCount = contentResolver.update(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, values, MediaStore.Audio.Playlists.DATA + " = ?", new String[] {playlistUrl});
+                        int updatedCount = contentResolver.update(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, values, MediaStore.Audio.Playlists.DATA + " = ?", new String[]{playlistUrl});
                         if (updatedCount == 0) {
                             int charIndex = filePath.lastIndexOf('.');
                             if (charIndex != -1) {
@@ -2105,37 +2106,39 @@ class FileStorageAccess {
                                 contentResolver.insert(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, values);
                             }
                         }
-                        projection = new String[] {MediaStore.Audio.Playlists._ID};
+                        projection = new String[]{MediaStore.Audio.Playlists._ID};
                         selection = MediaStore.Audio.Playlists.DATA + " = ?";
                         long playlistId = 0;
-                        try (Cursor cursor = contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, projection, selection, new String[] {playlistUrl}, null)) {
+                        try (Cursor cursor = contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, projection, selection, new String[]{playlistUrl}, null)) {
                             if (cursor != null && cursor.moveToFirst()) {
                                 playlistId = cursor.getLong(0);
                             }
                         }
                         ArrayList<String> playlistFileIds = new ArrayList<>();
                         try (InputStream stream = openReadStream(filePath)) {
-                        try (InputStreamReader streamReader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
-                        try (BufferedReader reader = new BufferedReader(streamReader)) {
-                            while (true) {
-                                playlistFileUrl = reader.readLine();
-                                if (playlistFileUrl == null) {
-                                    break;
-                                }
-                                playlistFileUrl = playlistFileUrl.replace('\\', '/');
-                                if (playlistFileUrl.startsWith("/")) {
-                                    playlistFileUrl = storageRootPath + playlistFileUrl;
-                                } else {
-                                    playlistFileUrl = playlistFolderPath.resolve(playlistFileUrl).toString();
-                                }
-                                String fileId = fileIdLookup.get(playlistFileUrl);
-                                if (fileId != null) {
-                                    playlistFileIds.add(fileId);
+                            try (InputStreamReader streamReader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+                                try (BufferedReader reader = new BufferedReader(streamReader)) {
+                                    while (true) {
+                                        playlistFileUrl = reader.readLine();
+                                        if (playlistFileUrl == null) {
+                                            break;
+                                        }
+                                        playlistFileUrl = playlistFileUrl.replace('\\', '/');
+                                        if (playlistFileUrl.startsWith("/")) {
+                                            playlistFileUrl = storageRootPath + playlistFileUrl;
+                                        } else {
+                                            playlistFileUrl = playlistFolderPath.resolve(playlistFileUrl).toString();
+                                        }
+                                        String fileId = fileIdLookup.get(playlistFileUrl);
+                                        if (fileId != null) {
+                                            playlistFileIds.add(fileId);
+                                        }
+                                    }
                                 }
                             }
-                        }}}
+                        }
                         ContentValues[] playlistFileUrlValues = new ContentValues[playlistFileIds.size()];
-                        for (int index = 0; index < playlistFileIds.size(); index ++) {
+                        for (int index = 0; index < playlistFileIds.size(); index++) {
                             values = new ContentValues();
                             values.put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, (long) index);
                             values.put(MediaStore.Audio.Playlists.Members.AUDIO_ID, Long.parseLong(playlistFileIds.get(index)));
@@ -2288,42 +2291,42 @@ class WifiSyncServiceSettings {
             File settingsFile = new File(context.getFilesDir(), "MusicBeeWifiSyncSettings.dat");
             if (settingsFile.exists()) {
                 try (FileInputStream fs = new FileInputStream(settingsFile)) {
-                try (DataInputStream reader = new DataInputStream(fs)) {
-                    int version = reader.readInt();
-                    defaultIpAddressValue = reader.readUTF();
-                    deviceName = reader.readUTF();
-                    deviceStorageIndex = reader.readInt();
-                    syncFromMusicBee = reader.readBoolean();
-                    if (version < 5) {
-                        syncFromMusicBee = true;
+                    try (DataInputStream reader = new DataInputStream(fs)) {
+                        int version = reader.readInt();
+                        defaultIpAddressValue = reader.readUTF();
+                        deviceName = reader.readUTF();
+                        deviceStorageIndex = reader.readInt();
+                        syncFromMusicBee = reader.readBoolean();
+                        if (version < 5) {
+                            syncFromMusicBee = true;
+                        }
+                        int count = reader.readInt();
+                        while (count > 0) {
+                            count--;
+                            String permissionsPath = reader.readUTF();
+                            String sdCardPath = reader.readUTF();
+                            permissionPathToSdCardMapping.put(permissionsPath, sdCardPath);
+                        }
+                        syncDeleteUnselectedFiles = reader.readBoolean();
+                        count = reader.readInt();
+                        while (count > 0) {
+                            count--;
+                            syncCustomPlaylistNames.add(reader.readUTF());
+                        }
+                        reverseSyncPlayer = reader.readInt();
+                        reverseSyncPlaylists = reader.readBoolean();
+                        reverseSyncRatings = reader.readBoolean();
+                        reverseSyncPlayCounts = reader.readBoolean();
+                        reverseSyncPlaylistsPath = reader.readUTF();
+                        if (version < 6) {
+                            permissionsUpgraded = false;
+                        } else {
+                            permissionsUpgraded = reader.readBoolean();
+                        }
                     }
-                    int count = reader.readInt();
-                    while (count > 0) {
-                        count --;
-                        String permissionsPath = reader.readUTF();
-                        String sdCardPath = reader.readUTF();
-                        permissionPathToSdCardMapping.put(permissionsPath, sdCardPath);
-                    }
-                    syncDeleteUnselectedFiles = reader.readBoolean();
-                    count = reader.readInt();
-                    while (count > 0) {
-                        count --;
-                        syncCustomPlaylistNames.add(reader.readUTF());
-                    }
-                    reverseSyncPlayer = reader.readInt();
-                    reverseSyncPlaylists = reader.readBoolean();
-                    reverseSyncRatings = reader.readBoolean();
-                    reverseSyncPlayCounts = reader.readBoolean();
-                    reverseSyncPlaylistsPath = reader.readUTF();
-                    if (version < 6) {
-                        permissionsUpgraded = false;
-                    } else {
-                        permissionsUpgraded = reader.readBoolean();
-                    }
-                }}
+                }
             }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             ErrorHandler.logError("loadSettings", ex);
         }
     }
@@ -2332,31 +2335,31 @@ class WifiSyncServiceSettings {
         try {
             File settingsFile = new File(context.getFilesDir(), "MusicBeeWifiSyncSettings.dat");
             try (FileOutputStream fs = new FileOutputStream(settingsFile)) {
-            try (DataOutputStream writer = new DataOutputStream(fs)) {
-                writer.writeInt(6);
-                writer.writeUTF(defaultIpAddressValue);
-                writer.writeUTF(deviceName);
-                writer.writeInt(deviceStorageIndex);
-                writer.writeBoolean(syncFromMusicBee);
-                writer.writeInt(permissionPathToSdCardMapping.size());
-                for (Map.Entry<String, String> item : permissionPathToSdCardMapping.entrySet()) {
-                    writer.writeUTF(item.getKey());
-                    writer.writeUTF(item.getValue());
+                try (DataOutputStream writer = new DataOutputStream(fs)) {
+                    writer.writeInt(6);
+                    writer.writeUTF(defaultIpAddressValue);
+                    writer.writeUTF(deviceName);
+                    writer.writeInt(deviceStorageIndex);
+                    writer.writeBoolean(syncFromMusicBee);
+                    writer.writeInt(permissionPathToSdCardMapping.size());
+                    for (Map.Entry<String, String> item : permissionPathToSdCardMapping.entrySet()) {
+                        writer.writeUTF(item.getKey());
+                        writer.writeUTF(item.getValue());
+                    }
+                    writer.writeBoolean(syncDeleteUnselectedFiles);
+                    writer.writeInt(syncCustomPlaylistNames.size());
+                    for (String playlistName : syncCustomPlaylistNames) {
+                        writer.writeUTF(playlistName);
+                    }
+                    writer.writeInt(reverseSyncPlayer);
+                    writer.writeBoolean(reverseSyncPlaylists);
+                    writer.writeBoolean(reverseSyncRatings);
+                    writer.writeBoolean(reverseSyncPlayCounts);
+                    writer.writeUTF(reverseSyncPlaylistsPath);
+                    writer.writeBoolean(permissionsUpgraded);
                 }
-                writer.writeBoolean(syncDeleteUnselectedFiles);
-                writer.writeInt(syncCustomPlaylistNames.size());
-                for (String playlistName : syncCustomPlaylistNames) {
-                    writer.writeUTF(playlistName);
-                }
-                writer.writeInt(reverseSyncPlayer);
-                writer.writeBoolean(reverseSyncPlaylists);
-                writer.writeBoolean(reverseSyncRatings);
-                writer.writeBoolean(reverseSyncPlayCounts);
-                writer.writeUTF(reverseSyncPlaylistsPath);
-                writer.writeBoolean(permissionsUpgraded);
-            }}
-        }
-        catch (Exception ex) {
+            }
+        } catch (Exception ex) {
             ErrorHandler.logError("saveSettings", ex);
         }
     }

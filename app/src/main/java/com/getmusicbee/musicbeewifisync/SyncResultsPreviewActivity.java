@@ -2,9 +2,9 @@ package com.getmusicbee.musicbeewifisync;
 
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.support.v4.view.MenuCompat;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.AlertDialog;
+import androidx.core.view.MenuCompat;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;

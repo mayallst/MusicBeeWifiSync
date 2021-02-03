@@ -3,11 +3,11 @@ package com.getmusicbee.musicbeewifisync;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Handler;
-import android.support.constraint.ConstraintLayout;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.Snackbar;
-import android.support.v4.view.MenuCompat;
-import android.support.v7.app.AlertDialog;
+import androidx.constraintlayout.widget.ConstraintLayout;
+
+import com.google.android.material.snackbar.Snackbar;
+import androidx.core.view.MenuCompat;
+import androidx.appcompat.app.AlertDialog;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
