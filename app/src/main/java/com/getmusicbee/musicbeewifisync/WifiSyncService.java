@@ -35,6 +35,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.InvalidObjectException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -44,6 +45,7 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -669,43 +671,29 @@ public class WifiSyncService extends Service {
 
         private void getFiles(String folderPath, boolean includeSubFolders) throws Exception {
             ContentResolver contentResolver = getApplicationContext().getContentResolver();
-            //Uri contentUri = MediaStore.Files.getContentUri("external");
             String[] projection = new String[] {MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.DATE_MODIFIED};
             int storageRootPathLength = storage.storageRootPath.length() + 1;
             String folderUrl = storage.getFileUrl(folderPath);
             String selection = "substr(" + MediaStore.Files.FileColumns.DATA + ",1," + folderUrl.length() + ") = ? AND " + MediaStore.Files.FileColumns.SIZE + " > 0";
             if (WifiSyncServiceSettings.debugMode) {
                 ErrorHandler.logInfo("getFiles", "Get: " + folderPath + ",url=" + folderUrl + ", inc=" + includeSubFolders);
-                /*
-                try (Cursor cursor = contentResolver.query(contentUri, projection, null, null, null)) {
-                    if (cursor == null) {
-                        ErrorHandler.logInfo("getFiles", "no cursor");
-                    } else {
-                        String s = "";
-                        int count = 0;
-                        looper:
-                        while (cursor.moveToNext()) {
-                            String filePath = cursor.getString(0);
-                            String ext = filePath.substring(filePath.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
-                            switch (ext) {
-                                case "mp3":
-                                case "ogg":
-                                    if (!filePath.startsWith("/storage/emulated/0/")) {
-                                        count ++;
-                                        s += filePath + ": " + (new Date(cursor.getLong(1) * 1000)) + "\n";
-                                        if (count > 32) break looper;
-                                    }
-                            }
-                        }
-                        ErrorHandler.logInfo("getFiles", s);
-                    }
-                }
-                */
             }
             try (Cursor cursor = contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, selection, new String[] {folderUrl}, null)) {
                 if (cursor == null) {
                     ErrorHandler.logInfo("getFiles", "no cursor");
                 } else {
+                    if (!includeSubFolders && cursor.getCount() == 0) {
+                        // hack because playlists will not return any matches when querying the media store
+                        ArrayList<FileInfo> files = storage.getFiles(folderPath);
+                        if (WifiSyncServiceSettings.debugMode) {
+                            ErrorHandler.logInfo("getFiles", "count=" + files.size());
+                        }
+                        for (FileInfo file : files) {
+                            writeString(storage.getDecodedUrl(file.filename));
+                            writeLong(file.dateModified);
+                        }
+                        return;
+                    }
                     if (WifiSyncServiceSettings.debugMode) {
                         ErrorHandler.logInfo("getFiles", "count=" + cursor.getCount());
                     }
@@ -1052,9 +1040,11 @@ public class WifiSyncService extends Service {
                 switch (settingsReverseSyncPlayer) {
                     case WifiSyncServiceSettings.PLAYER_GONEMAD:
                         files = storage.getFiles(playlistsFolderPath);
+/*
                         if (!playlistsFolderPath.equalsIgnoreCase(settingsReverseSyncPlaylistsPath)) {
                             files.addAll(storage.getFiles(settingsReverseSyncPlaylistsPath));
                         }
+*/
                         break;
                     case WifiSyncServiceSettings.PLAYER_POWERAMP:
 /*
@@ -1078,7 +1068,7 @@ public class WifiSyncService extends Service {
                         break;
                 }
                 for (FileInfo info : files) {
-                    writeString(info.filename);
+                    writeString(storage.getDecodedUrl(info.filename));
                     writeLong(info.dateModified);
                 }
                 writeString(syncEndOfData);
@@ -1974,6 +1964,15 @@ class FileStorageAccess {
 
     private Uri getDocumentFileUri(String filePath) {
         return DocumentsContract.buildDocumentUriUsingTree(storageRootPermissionedUri, getDocumentId(filePath));
+    }
+
+    public String getDecodedUrl(String url) throws UnsupportedEncodingException {
+        if (!isDocumentFileStorage) {
+            return url;
+        }
+        else {
+            return URLDecoder.decode(url, "UTF-8");
+        }
     }
 
     void scanFile(String filePath, long fileLength, long fileDateModified, int action) {

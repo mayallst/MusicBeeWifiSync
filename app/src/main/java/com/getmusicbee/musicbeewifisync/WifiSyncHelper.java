@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.v7.app.AlertDialog;
@@ -77,6 +78,7 @@ class ErrorHandler {
     private static void initialise() {
         if (fileHandler == null) {
             try {
+                //folderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
                 File file = new File(folderPath, "MusicBeeWifiSyncErrorLog.txt");
                 fileHandler = new FileHandler(file.getPath());
                 fileHandler.setFormatter(new LogFormatter());
