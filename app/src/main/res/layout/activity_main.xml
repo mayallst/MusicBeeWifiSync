@@ -137,6 +137,7 @@
                 android:enabled="false"
                 android:textSize="16sp"
                 android:windowSoftInputMode="stateHidden"
+                android:visibility="gone"
                 app:layout_constraintTop_toBottomOf="@+id/syncToPlaylists"
             />
 
