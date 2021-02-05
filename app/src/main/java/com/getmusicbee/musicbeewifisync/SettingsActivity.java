@@ -2,10 +2,13 @@ package com.getmusicbee.musicbeewifisync;
 
 import android.content.Intent;
 import android.os.Build;
-import android.support.v4.view.MenuCompat;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.AlertDialog;
+
+import androidx.core.view.MenuCompat;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
+
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -19,6 +22,9 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 public class SettingsActivity extends WifiSyncBaseActivity {
     private boolean initialSetup;
     private Button locateServerButton;
@@ -31,6 +37,7 @@ public class SettingsActivity extends WifiSyncBaseActivity {
     private CheckBox settingsDebugMode;
     private TextView settingsDeviceNamePrompt;
     private EditText settingsDeviceName;
+    private EditText settingsServerIpOverride;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,6 +46,7 @@ public class SettingsActivity extends WifiSyncBaseActivity {
         PermissionsHandler.demandInternalStorageAccessPermissions(this);
         initialSetup = (WifiSyncServiceSettings.defaultIpAddressValue.length() == 0);
         locateServerButton = findViewById(R.id.locateServerButton);
+        settingsServerIpOverride = findViewById(R.id.settingsServerIpOverride);
         settingsWaitIndicator = findViewById(R.id.settingsWaitIndicator);
         settingsLocateServerNoConfig = findViewById(R.id.settingsLocateServerNoConfig);
         TextView settingsStoragePrompt = findViewById(R.id.settingsStoragePrompt);
@@ -68,8 +76,7 @@ public class SettingsActivity extends WifiSyncBaseActivity {
             settingsStorageSdCard1.setChecked(false);
             settingsStorageSdCard1.setEnabled(false);
             settingsStorageSdCard2.setVisibility(View.GONE);
-        }
-        else {
+        } else {
             settingsStorageInternal.setChecked((WifiSyncServiceSettings.deviceStorageIndex == 1));
             settingsStorageSdCard1.setChecked((WifiSyncServiceSettings.deviceStorageIndex <= 0 || WifiSyncServiceSettings.deviceStorageIndex == 2 || WifiSyncServiceSettings.deviceStorageIndex > 1 + externalSdCardCount));
             settingsStorageSdCard1.setEnabled(true);
@@ -102,6 +109,7 @@ public class SettingsActivity extends WifiSyncBaseActivity {
             findViewById(R.id.settingsInfo1).setVisibility(View.GONE);
             findViewById(R.id.settingsInfo2).setVisibility(View.GONE);
             locateServerButton.setVisibility(View.GONE);
+            setServerIpTextBoxVisibility(View.GONE);
             settingsDebugMode.setVisibility(View.VISIBLE);
             settingsStoragePrompt.setText(R.string.settingsStorageSettingsPrompt);
             if (!Build.MODEL.equalsIgnoreCase(WifiSyncServiceSettings.deviceName)) {
@@ -122,7 +130,7 @@ public class SettingsActivity extends WifiSyncBaseActivity {
     }
 
     @Override
-    public boolean onSupportNavigateUp(){
+    public boolean onSupportNavigateUp() {
         finish();
         return true;
     }
@@ -173,10 +181,29 @@ public class SettingsActivity extends WifiSyncBaseActivity {
         settingsWaitIndicator.setVisibility(View.VISIBLE);
         locateServerButton.setEnabled(false);
         locateServerButton.setTextColor(buttonTextDisabledColor);
+
         Thread locateServerThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                final String serverIPAddress = WifiSyncService.getMusicBeeServerAddress(mainWindow);
+                InetAddress serverIP = null;
+                if (!TextUtils.isEmpty(settingsServerIpOverride.getText().toString())) {
+                    try {
+                        serverIP = InetAddress.getByName(settingsServerIpOverride.getText().toString());
+                    } catch (UnknownHostException e) {
+                        runOnUiThread(new Runnable() {
+                                          @Override
+                                          public void run() {
+                                              settingsServerIpOverride.setError(getText(R.string.errorInvalidIp));
+                                              settingsWaitIndicator.setVisibility(View.INVISIBLE);
+                                              locateServerButton.setEnabled(true);
+                                              locateServerButton.setTextColor(buttonTextEnabledColor);
+                                          }
+                                      }
+                        );
+                        return;
+                    }
+                }
+                final String serverIPAddress = WifiSyncService.getMusicBeeServerAddress(mainWindow, serverIP);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -207,6 +234,12 @@ public class SettingsActivity extends WifiSyncBaseActivity {
             }
         });
         locateServerThread.start();
+    }
+
+    private void setServerIpTextBoxVisibility(int visibility) {
+        settingsServerIpOverride.setVisibility(visibility);
+        findViewById(R.id.settingsServerIpLabel).setVisibility(visibility);
+        findViewById(R.id.settingsServerIpPrompt).setVisibility(visibility);
     }
 
     private void showNoConfigMatchedSettings() {

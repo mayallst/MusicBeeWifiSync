@@ -13,6 +13,7 @@
     <string name="settingsLocateServerInfo1">Step 1. Ensure MusicBee is running on your computer and that you have ticked \"enable Wifi transfer\" in the Device Preferences tab.</string>
     <string name="settingsLocateServerInfo2">You must grant MusicBee access to your private network when prompted by Windows Firewall.</string>
     <string name="settingsLocateServerInfo3">Step 2. Select the storage for your files:</string>
+    <string name="settingsLocateServerInfo4">Step 3. (Optional) Set the IP of the PC running MusicBee if autodetect fails:</string>
     <string name="settingsStorageSettingsPrompt">Select the storage for your files:</string>
     <string name="settingsStorageInternal">Internal Storage</string>
     <string name="settingsStorageExternal">Removable SD Card</string>
@@ -88,4 +89,5 @@
     <string name="menuWifiSyncLog">Error Log</string>
     <string name="menuWifiFullSync">Full Sync</string>
     <string name="menuWifiPlaylistSync">Playlist Sync</string>
+    <string name="errorInvalidIp">This is not a valid IP address</string>
 </resources>

@@ -1,7 +1,7 @@
 package com.getmusicbee.musicbeewifisync;
 
 import android.app.AlertDialog;
-import android.support.v4.view.MenuCompat;
+import androidx.core.view.MenuCompat;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,7 +15,7 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 
 public class PlaylistSyncActivity extends WifiSyncBaseActivity {
     private boolean syncPreview;

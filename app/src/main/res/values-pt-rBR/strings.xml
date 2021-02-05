@@ -89,4 +89,6 @@
     <string name="menuWifiSyncLog">Registro de Erros</string>
     <string name="menuWifiFullSync">Sincronização Total</string>
     <string name="menuWifiPlaylistSync">Sincronização de Playlists</string>
+    <string name="settingsLocateServerInfo4">Passo 3. (Opcional) Defina o IP do PC executando MusicBee se detecção automática falhar:</string>
+    <string name="errorInvalidIp">Este não é um endereço IP válido</string>
 </resources>
